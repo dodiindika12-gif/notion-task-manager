@@ -1056,13 +1056,13 @@ const ProjectRiskPanel = ({ rows }) => {
     );
 };
 
-const QuickAddTask = ({ projects, members, onAddTask }) => {
+const QuickAddTask = ({ projects, members, defaultPicId = '', onAddTask }) => {
     const [form, setForm] = useState({
         title: '',
         projectId: projects[0]?.id || '',
         deadline: '',
         priority: 'Medium',
-        picId: ''
+        picId: defaultPicId || ''
     });
 
     useEffect(() => {
@@ -1070,6 +1070,12 @@ const QuickAddTask = ({ projects, members, onAddTask }) => {
             setForm(prev => ({ ...prev, projectId: projects[0].id }));
         }
     }, [projects, form.projectId]);
+
+    useEffect(() => {
+        if (defaultPicId) {
+            setForm(prev => ({ ...prev, picId: prev.picId || defaultPicId }));
+        }
+    }, [defaultPicId]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -1084,7 +1090,7 @@ const QuickAddTask = ({ projects, members, onAddTask }) => {
         });
 
         if (!saved) return;
-        setForm(prev => ({ ...prev, title: '', deadline: '' }));
+        setForm(prev => ({ ...prev, title: '', deadline: '', picId: defaultPicId || prev.picId || '' }));
     };
 
     return (
@@ -1316,8 +1322,12 @@ const MiniDashboardCalendar = ({ tasks, projects, onEdit }) => {
     );
 };
 
-const MainDashboard = ({ tasks, projects, members, shortcuts, onEdit, onQuickAddTask }) => {
-    const [dashboardPicFilter, setDashboardPicFilter] = useState('all');
+const MainDashboard = ({ tasks, projects, members, shortcuts, currentPicId = '', onEdit, onQuickAddTask }) => {
+    const [dashboardPicFilter, setDashboardPicFilter] = useState(currentPicId || 'all');
+
+    useEffect(() => {
+        setDashboardPicFilter(currentPicId || 'all');
+    }, [currentPicId]);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const weekEnd = getWeekEnd(today);
@@ -1397,7 +1407,7 @@ const MainDashboard = ({ tasks, projects, members, shortcuts, onEdit, onQuickAdd
             </div>
 
             <TaskSummary stats={dashboardStats} />
-            <QuickAddTask projects={projects} members={members} onAddTask={onQuickAddTask} />
+            <QuickAddTask projects={projects} members={members} defaultPicId={currentPicId} onAddTask={onQuickAddTask} />
 
             <div className="grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_360px] gap-5">
                 <div className="min-w-0 space-y-5">
@@ -1422,14 +1432,18 @@ const MainDashboard = ({ tasks, projects, members, shortcuts, onEdit, onQuickAdd
     );
 };
 
-const MarkomCalendar = ({ tasks, projects, members, onEdit, onCreateTask, onToggleProjectCalendar }) => {
+const MarkomCalendar = ({ tasks, projects, members, currentPicId = '', onEdit, onCreateTask, onToggleProjectCalendar }) => {
     const [currentMonth, setCurrentMonth] = useState(() => {
         const date = new Date();
         date.setDate(1);
         date.setHours(0, 0, 0, 0);
         return date;
     });
-    const [picFilter, setPicFilter] = useState('all');
+    const [picFilter, setPicFilter] = useState(currentPicId || 'all');
+
+    useEffect(() => {
+        setPicFilter(currentPicId || 'all');
+    }, [currentPicId]);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -2426,9 +2440,10 @@ const ShortcutLauncher = ({ shortcuts, onAddShortcut, onDeleteShortcut, onToggle
 };
 
 const PIN_UNLOCK_KEY = 'markom_tools_pin_unlock_until';
+const CURRENT_PIC_KEY = 'markom_tools_current_pic_id';
 const PIN_UNLOCK_DURATION = 1000 * 60 * 60 * 12;
 
-const PinGate = ({ onUnlock }) => {
+const PinGate = ({ members = [], selectedPicId = '', onPicChange, onUnlock }) => {
     const [pin, setPin] = useState('');
     const [error, setError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -2436,6 +2451,10 @@ const PinGate = ({ onUnlock }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         const cleanPin = pin.trim();
+        if (!selectedPicId) {
+            setError('Pilih PIC terlebih dahulu.');
+            return;
+        }
         if (!cleanPin) {
             setError('Masukkan PIN akses.');
             return;
@@ -2459,7 +2478,8 @@ const PinGate = ({ onUnlock }) => {
             }
 
             localStorage.setItem(PIN_UNLOCK_KEY, String(Date.now() + PIN_UNLOCK_DURATION));
-            onUnlock();
+            localStorage.setItem(CURRENT_PIC_KEY, selectedPicId);
+            onUnlock(selectedPicId);
         } catch (err) {
             console.error('PIN verification error:', err);
             setError('Gagal mengecek PIN. Pastikan file API verify-pin sudah dipasang.');
@@ -2486,11 +2506,24 @@ const PinGate = ({ onUnlock }) => {
                 </div>
 
                 <div className="mt-8">
-                    <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Masukkan PIN</h2>
-                    <p className="mt-2 text-sm leading-6 text-slate-500">Akses dashboard, task, kalender, shortcut, dan notes Markom.</p>
+                    <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Pilih PIC & Masukkan PIN</h2>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">PIC yang dipilih akan menjadi default filter dashboard dan default penanggung jawab task baru.</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+                    <select
+                        value={selectedPicId}
+                        onChange={(e) => {
+                            onPicChange?.(e.target.value);
+                            setError('');
+                        }}
+                        className="w-full rounded-2xl border border-white/80 bg-white px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                    >
+                        <option value="">Pilih PIC</option>
+                        {(members.length ? members : SEED_MEMBERS).map(member => (
+                            <option key={member.id} value={member.id}>{member.name} ({member.position || 'Tim Markom'})</option>
+                        ))}
+                    </select>
                     <input
                         type="password"
                         inputMode="numeric"
@@ -2530,6 +2563,7 @@ export default function TaskManagerApp() {
     const [projects, setProjects] = useState([]);
     const [activeProject, setActiveProject] = useState('');
     const [members, setMembers] = useState([]);
+    const [currentPicId, setCurrentPicId] = useState('');
     const [tasks, setTasks] = useState([]);
     const [shortcuts, setShortcuts] = useState([]);
     const [notes, setNotes] = useState([]);
@@ -2546,14 +2580,44 @@ export default function TaskManagerApp() {
 
     useEffect(() => {
         const unlockUntil = Number(localStorage.getItem(PIN_UNLOCK_KEY) || 0);
-        if (unlockUntil > Date.now()) {
-            setIsUnlocked(true);
-            return;
-        }
+        const savedPicId = localStorage.getItem(CURRENT_PIC_KEY) || '';
+        if (savedPicId) setCurrentPicId(savedPicId);
 
-        localStorage.removeItem(PIN_UNLOCK_KEY);
-        setIsMounted(true);
+        const bootstrapLogin = async () => {
+            const { data, error } = await supabase
+                .from('members')
+                .select('*')
+                .order('created_at', { ascending: true });
+
+            const loginMembers = !error && data?.length ? data : SEED_MEMBERS;
+            setMembers(loginMembers);
+
+            if (!savedPicId && loginMembers[0]?.id) {
+                setCurrentPicId(loginMembers[0].id);
+                localStorage.setItem(CURRENT_PIC_KEY, loginMembers[0].id);
+            }
+
+            if (unlockUntil > Date.now()) {
+                setIsUnlocked(true);
+                return;
+            }
+
+            localStorage.removeItem(PIN_UNLOCK_KEY);
+            setIsMounted(true);
+        };
+
+        bootstrapLogin();
     }, []);
+
+    useEffect(() => {
+        if (currentPicId) setPicFilter(currentPicId);
+    }, [currentPicId]);
+
+    const handleCurrentPicChange = (picId) => {
+        setCurrentPicId(picId);
+        if (picId) localStorage.setItem(CURRENT_PIC_KEY, picId);
+        else localStorage.removeItem(CURRENT_PIC_KEY);
+    };
 
     // Load initial data from Supabase after the client has mounted.
     useEffect(() => {
@@ -2641,12 +2705,20 @@ export default function TaskManagerApp() {
                 console.warn('Supabase notes load warning:', notesError);
             }
 
+            const nextMembers = mappedMembers.length ? mappedMembers : SEED_MEMBERS;
             setProjects(mappedProjects.length ? mappedProjects : SEED_PROJECTS);
-            setMembers(mappedMembers.length ? mappedMembers : SEED_MEMBERS);
+            setMembers(nextMembers);
             setTasks(mappedTasks.length ? mappedTasks : SEED_TASKS);
             setShortcuts(mappedShortcuts.length ? mappedShortcuts : SEED_SHORTCUTS);
             setNotes(mappedNotes.length ? mappedNotes : SEED_NOTES);
             setActiveProject(mappedProjects[0]?.id || SEED_PROJECTS[0]?.id || '');
+            setCurrentPicId(prev => {
+                const savedPic = prev || localStorage.getItem(CURRENT_PIC_KEY) || '';
+                if (savedPic && nextMembers.some(member => member.id === savedPic)) return savedPic;
+                const fallbackPic = nextMembers[0]?.id || '';
+                if (fallbackPic) localStorage.setItem(CURRENT_PIC_KEY, fallbackPic);
+                return fallbackPic;
+            });
             setIsMounted(true);
         };
 
@@ -2655,7 +2727,17 @@ export default function TaskManagerApp() {
 
     if (!isMounted) return <div className="h-screen w-screen flex items-center justify-center bg-white text-gray-500">Memuat Workspace...</div>;
 
-    if (!isUnlocked) return <PinGate onUnlock={() => setIsUnlocked(true)} />;
+    if (!isUnlocked) return (
+        <PinGate
+            members={members.length ? members : SEED_MEMBERS}
+            selectedPicId={currentPicId}
+            onPicChange={handleCurrentPicChange}
+            onUnlock={(picId) => {
+                handleCurrentPicChange(picId);
+                setIsUnlocked(true);
+            }}
+        />
+    );
 
     const handleLockApp = () => {
         localStorage.removeItem(PIN_UNLOCK_KEY);
@@ -2789,7 +2871,7 @@ export default function TaskManagerApp() {
             status, 
             priority: 'Medium',
             deadline: '',
-            picId: '',
+            picId: currentPicId || '',
             todos: [],
             isNew: true
         };
@@ -2810,7 +2892,7 @@ export default function TaskManagerApp() {
             status: 'To Do',
             priority: 'Medium',
             deadline,
-            picId: '',
+            picId: currentPicId || '',
             todos: [],
             isNew: true
         });
@@ -2826,7 +2908,7 @@ export default function TaskManagerApp() {
             status: 'To Do',
             priority: taskInput.priority || 'Medium',
             deadline: taskInput.deadline || '',
-            picId: taskInput.picId || '',
+            picId: taskInput.picId || currentPicId || '',
             todos: []
         };
 
@@ -3113,8 +3195,8 @@ export default function TaskManagerApp() {
             status: 'To Do',
             priority: 'Medium',
             deadline: meeting.deadline || '',
-            picId: meeting.picId || '',
-            todos: meeting.decision ? [{ id: `td${Date.now().toString()}`, title: meeting.decision, done: false, picId: meeting.picId || '' }] : [],
+            picId: meeting.picId || currentPicId || '',
+            todos: meeting.decision ? [{ id: `td${Date.now().toString()}`, title: meeting.decision, done: false, picId: meeting.picId || currentPicId || '' }] : [],
             isNew: true
         });
     };
@@ -3211,7 +3293,7 @@ export default function TaskManagerApp() {
         setSearchQuery('');
         setStatusFilter('all');
         setPriorityFilter('all');
-        setPicFilter('all');
+        setPicFilter(currentPicId || 'all');
         setSortMode('deadline_asc');
     };
 
@@ -3424,6 +3506,12 @@ export default function TaskManagerApp() {
                         </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
+                        {currentPicId && (
+                            <div className="hidden sm:flex items-center gap-2 rounded-2xl border border-white/70 bg-white/55 px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm">
+                                <i className="fa-regular fa-user"></i>
+                                <span>{members.find(member => member.id === currentPicId)?.name || 'PIC'}</span>
+                            </div>
+                        )}
                         <button
                             onClick={handleLockApp}
                             className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-white/70 bg-white/55 text-xs font-semibold text-slate-500 shadow-sm transition hover:bg-white hover:text-slate-950 sm:w-auto sm:px-3 sm:py-2"
@@ -3448,6 +3536,7 @@ export default function TaskManagerApp() {
                             projects={projects}
                             members={members}
                             shortcuts={shortcuts}
+                            currentPicId={currentPicId}
                             onEdit={handleEditTask}
                             onQuickAddTask={handleQuickAddTask}
                         />
@@ -3469,6 +3558,7 @@ export default function TaskManagerApp() {
                             tasks={tasks}
                             projects={projects}
                             members={members}
+                            currentPicId={currentPicId}
                             onEdit={handleEditTask}
                             onCreateTask={handleAddTaskForDate}
                             onToggleProjectCalendar={handleToggleProjectCalendar}
