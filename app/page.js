@@ -1782,7 +1782,8 @@ const NotesPage = ({ notes, members, onAddNote, onUpdateNote, onDeleteNote, onCr
             issue: meetingForm.issue.trim(),
             decision: meetingForm.decision.trim(),
             picId: meetingForm.picId,
-            deadline: meetingForm.deadline
+            deadline: meetingForm.deadline,
+            isDone: editingId ? notes.find(note => note.id === editingId)?.isDone || false : false
         };
 
         const ok = editingId ? await onUpdateNote(editingId, payload) : await onAddNote(payload);
@@ -1833,6 +1834,75 @@ const NotesPage = ({ notes, members, onAddNote, onUpdateNote, onDeleteNote, onCr
     };
 
     const meetingPic = (picId) => members.find(member => member.id === picId);
+
+    const handleToggleMeetingDone = async (meeting) => {
+        await onUpdateNote(meeting.id, {
+            type: 'meeting',
+            title: meeting.title || 'Meeting Tanpa Judul',
+            content: meeting.content || '',
+            issue: meeting.issue || '',
+            decision: meeting.decision || '',
+            picId: meeting.picId || '',
+            deadline: meeting.deadline || '',
+            isDone: !meeting.isDone
+        });
+    };
+
+    const downloadMeetingExcel = () => {
+        if (!selectedMeeting) return;
+
+        const escapeHtml = (value) => String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+
+        const rows = selectedMeeting.items.map((meeting, index) => {
+            const pic = meetingPic(meeting.picId);
+            return `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${escapeHtml(meeting.issue)}</td>
+                    <td>${escapeHtml(meeting.decision)}</td>
+                    <td>${escapeHtml(pic?.name || 'Tanpa PIC')}</td>
+                    <td>${escapeHtml(formatDeadline(meeting.deadline) || '')}</td>
+                    <td>${meeting.isDone ? 'Tuntas' : 'Belum Tuntas'}</td>
+                </tr>
+            `;
+        }).join('');
+
+        const html = `
+            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+                <head><meta charset="UTF-8"></head>
+                <body>
+                    <table border="1">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>Issue</th>
+                                <th>Keputusan</th>
+                                <th>PIC</th>
+                                <th>Deadline</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </body>
+            </html>
+        `;
+
+        const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const safeTitle = selectedMeeting.title.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'minute-of-meeting';
+        link.href = url;
+        link.download = `${safeTitle}.xls`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
 
     return (
         <div className="w-full animate-fade-in">
@@ -1912,11 +1982,18 @@ const NotesPage = ({ notes, members, onAddNote, onUpdateNote, onDeleteNote, onCr
 
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                         {memos.map(memo => (
-                            <button
+                            <div
                                 key={memo.id}
-                                type="button"
+                                role="button"
+                                tabIndex={0}
                                 onClick={() => startEditMemo(memo)}
-                                className="rounded-3xl border border-white/70 bg-white/75 p-4 text-left shadow-lg shadow-slate-200/30 backdrop-blur transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-xl hover:shadow-slate-200/50"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        startEditMemo(memo);
+                                    }
+                                }}
+                                className="rounded-3xl border border-white/70 bg-white/75 p-4 text-left shadow-lg shadow-slate-200/30 backdrop-blur transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 cursor-pointer focus:outline-none focus:ring-2 focus:ring-slate-300"
                             >
                                 <div className="flex items-start justify-between gap-3">
                                     <h3 className="font-semibold text-slate-900 break-words">{memo.title || 'Tanpa Judul'}</h3>
@@ -1945,7 +2022,7 @@ const NotesPage = ({ notes, members, onAddNote, onUpdateNote, onDeleteNote, onCr
                                         </button>
                                     </div>
                                 </div>
-                            </button>
+                            </div>
                         ))}
                         {memos.length === 0 && (
                             <div className="rounded-3xl border border-dashed border-slate-200 bg-white/45 p-8 text-center text-sm text-slate-400 md:col-span-2 xl:col-span-3">
@@ -2060,13 +2137,25 @@ const NotesPage = ({ notes, members, onAddNote, onUpdateNote, onDeleteNote, onCr
                                             <p className="mt-1 text-sm text-slate-500">{selectedMeeting.items.length} baris pembahasan</p>
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={() => openMeetingRowForm(selectedMeeting.title)}
-                                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800"
-                                    >
-                                        <i className="fa-solid fa-plus text-xs"></i>
-                                        Tambah Baris Pembahasan
-                                    </button>
+                                    <div className="flex flex-col gap-2 sm:flex-row">
+                                        <button
+                                            type="button"
+                                            onClick={downloadMeetingExcel}
+                                            disabled={!selectedMeeting.items.length}
+                                            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:text-slate-950 disabled:opacity-40 disabled:cursor-not-allowed"
+                                        >
+                                            <i className="fa-regular fa-file-excel text-xs"></i>
+                                            Download Excel
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => openMeetingRowForm(selectedMeeting.title)}
+                                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800"
+                                        >
+                                            <i className="fa-solid fa-plus text-xs"></i>
+                                            Tambah Baris Pembahasan
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -2117,20 +2206,21 @@ const NotesPage = ({ notes, members, onAddNote, onUpdateNote, onDeleteNote, onCr
 
                             <div className="overflow-hidden rounded-3xl border border-white/70 bg-white/75 shadow-lg shadow-slate-200/30">
                                 <div className="overflow-x-auto">
-                                    <table className="w-full min-w-[900px] text-left border-collapse">
+                                    <table className="w-full min-w-[980px] text-left border-collapse">
                                         <thead>
                                             <tr className="bg-white/60 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                                                 <th className="p-3 font-medium">Issue</th>
                                                 <th className="p-3 font-medium">Keputusan</th>
                                                 <th className="p-3 font-medium w-44">PIC</th>
                                                 <th className="p-3 font-medium w-36">Deadline</th>
+                                                <th className="p-3 font-medium w-24 text-center">Tuntas</th>
                                                 <th className="p-3 font-medium w-48 text-right">Aksi</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100 bg-white/45">
                                             {selectedMeeting.items.length === 0 && (
                                                 <tr>
-                                                    <td colSpan="5" className="p-8 text-center text-sm text-slate-400">
+                                                    <td colSpan="6" className="p-8 text-center text-sm text-slate-400">
                                                         Belum ada baris pembahasan. Klik Tambah Baris Pembahasan untuk mulai mencatat.
                                                     </td>
                                                 </tr>
@@ -2138,9 +2228,9 @@ const NotesPage = ({ notes, members, onAddNote, onUpdateNote, onDeleteNote, onCr
                                             {selectedMeeting.items.map(meeting => {
                                                 const pic = meetingPic(meeting.picId);
                                                 return (
-                                                    <tr key={meeting.id} className="align-top">
-                                                        <td className="p-3 text-sm text-slate-800 whitespace-pre-wrap">{meeting.issue || '-'}</td>
-                                                        <td className="p-3 text-sm text-slate-700 whitespace-pre-wrap">{meeting.decision || '-'}</td>
+                                                    <tr key={meeting.id} className={`align-top ${meeting.isDone ? 'bg-slate-50/70 opacity-70' : ''}`}>
+                                                        <td className={`p-3 text-sm whitespace-pre-wrap ${meeting.isDone ? 'text-slate-400 line-through' : 'text-slate-800'}`}>{meeting.issue || '-'}</td>
+                                                        <td className={`p-3 text-sm whitespace-pre-wrap ${meeting.isDone ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{meeting.decision || '-'}</td>
                                                         <td className="p-3">
                                                             <div className="flex items-center gap-2 text-sm text-slate-700">
                                                                 {pic ? <span className="w-6 h-6 rounded-full text-white text-[10px] font-bold flex items-center justify-center" style={{ backgroundColor: pic.color }}>{getInitials(pic.name)}</span> : null}
@@ -2148,6 +2238,15 @@ const NotesPage = ({ notes, members, onAddNote, onUpdateNote, onDeleteNote, onCr
                                                             </div>
                                                         </td>
                                                         <td className="p-3 text-sm text-slate-700">{formatDeadline(meeting.deadline) || '-'}</td>
+                                                        <td className="p-3 text-center">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={!!meeting.isDone}
+                                                                onChange={() => handleToggleMeetingDone(meeting)}
+                                                                className="h-4 w-4 rounded border-slate-300 accent-slate-950"
+                                                                title="Tandai tuntas"
+                                                            />
+                                                        </td>
                                                         <td className="p-3">
                                                             <div className="flex justify-end gap-2">
                                                                 <button onClick={() => onCreateTaskFromMeeting(meeting)} className="rounded-2xl bg-slate-950 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800 whitespace-nowrap">
@@ -2530,6 +2629,7 @@ export default function TaskManagerApp() {
                 decision: note.decision || '',
                 picId: note.pic_id || '',
                 deadline: note.deadline || '',
+                isDone: note.is_done || false,
                 createdAt: note.created_at,
                 updatedAt: note.updated_at
             }));
@@ -2922,6 +3022,7 @@ export default function TaskManagerApp() {
             decision: noteInput.decision || '',
             picId: noteInput.picId || '',
             deadline: noteInput.deadline || '',
+            isDone: noteInput.isDone || false,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
@@ -2935,6 +3036,7 @@ export default function TaskManagerApp() {
             decision: newNote.decision || null,
             pic_id: newNote.picId || null,
             deadline: newNote.deadline || null,
+            is_done: newNote.isDone || false,
             updated_at: newNote.updatedAt
         });
 
@@ -2958,6 +3060,7 @@ export default function TaskManagerApp() {
             decision: noteInput.decision || null,
             pic_id: noteInput.picId || null,
             deadline: noteInput.deadline || null,
+            is_done: noteInput.isDone || false,
             updated_at: updatedAt
         };
 
@@ -2978,6 +3081,7 @@ export default function TaskManagerApp() {
             decision: noteInput.decision || '',
             picId: noteInput.picId || '',
             deadline: noteInput.deadline || '',
+            isDone: noteInput.isDone || false,
             updatedAt
         } : note));
         return true;
@@ -3457,4 +3561,5 @@ export default function TaskManagerApp() {
             <TaskEditModal task={editingTask} projects={projects} members={members} isOpen={!!editingTask} onClose={() => setEditingTask(null)} onSave={handleSaveEditedTask} />
         </div>
     );
+    
 }
