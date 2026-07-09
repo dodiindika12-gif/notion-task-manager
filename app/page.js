@@ -929,7 +929,7 @@ const DashboardTaskList = ({ title, tasks, projects, members, tone, emptyText, o
                                     <div className="text-sm font-medium text-gray-900 truncate">{task.title}</div>
                                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
                                         <span><i className="fa-regular fa-folder mr-1"></i>{project?.name || 'Tanpa Project'}</span>
-                                        <span><i className="fa-regular fa-user mr-1"></i>{member?.name || 'Tanpa PIC'}</span>
+                                        <span><i className="fa-regular fa-user mr-1"></i>{member?.name || ALL_MARKOM_LABEL}</span>
                                     </div>
                                 </div>
                                 <div className="text-right flex-shrink-0">
@@ -1439,11 +1439,8 @@ const MarkomCalendar = ({ tasks, projects, members, currentPicId = '', onEdit, o
         date.setHours(0, 0, 0, 0);
         return date;
     });
-    const [picFilter, setPicFilter] = useState(currentPicId || 'all');
-
-    useEffect(() => {
-        setPicFilter(currentPicId || 'all');
-    }, [currentPicId]);
+    // Tampilan kalender selalu default semua PIC. Login PIC hanya dipakai untuk default PIC saat menambah task.
+    const [picFilter, setPicFilter] = useState('all');
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1617,10 +1614,10 @@ const MarkomCalendar = ({ tasks, projects, members, currentPicId = '', onEdit, o
                                                             color: projectColor,
                                                             borderLeftWidth: '3px'
                                                         }}
-                                                        title={`${task.title} - ${project?.name || 'Tanpa Project'} - ${member?.name || 'Tanpa PIC'}`}
+                                                        title={`${task.title} - ${project?.name || 'Tanpa Project'} - ${member?.name || ALL_MARKOM_LABEL}`}
                                                     >
                                                         <div className="text-[11px] font-medium truncate">{task.title}</div>
-                                                        <div className="text-[10px] opacity-80 truncate">{project?.name || 'Tanpa Project'} · {member?.name || 'Tanpa PIC'}</div>
+                                                        <div className="text-[10px] opacity-80 truncate">{project?.name || 'Tanpa Project'} · {member?.name || ALL_MARKOM_LABEL}</div>
                                                     </button>
                                                 );
                                             })}
@@ -1715,7 +1712,7 @@ const TaskControls = ({
     );
 };
 
-const NotesPage = ({ notes, members, onAddNote, onUpdateNote, onDeleteNote, onCreateTaskFromMeeting }) => {
+const NotesPage = ({ notes, members, currentPicId = '', onAddNote, onUpdateNote, onDeleteNote, onCreateTaskFromMeeting }) => {
     const [activeTab, setActiveTab] = useState('memo');
     const [editingId, setEditingId] = useState(null);
     const [isMemoModalOpen, setIsMemoModalOpen] = useState(false);
@@ -1724,7 +1721,13 @@ const NotesPage = ({ notes, members, onAddNote, onUpdateNote, onDeleteNote, onCr
     const [selectedMeetingTitle, setSelectedMeetingTitle] = useState('');
     const [activeMeetingTitle, setActiveMeetingTitle] = useState('');
     const [memoForm, setMemoForm] = useState({ title: '', content: '' });
-    const [meetingForm, setMeetingForm] = useState({ title: '', issue: '', decision: '', picId: '', deadline: '' });
+    const [meetingForm, setMeetingForm] = useState({ title: '', issue: '', decision: '', picId: currentPicId || '', deadline: '' });
+
+    useEffect(() => {
+        if (!editingId) {
+            setMeetingForm(prev => ({ ...prev, picId: prev.picId || currentPicId || '' }));
+        }
+    }, [currentPicId, editingId]);
 
     const memos = notes.filter(note => note.type === 'memo');
     const meetings = notes.filter(note => note.type === 'meeting');
@@ -1743,7 +1746,7 @@ const NotesPage = ({ notes, members, onAddNote, onUpdateNote, onDeleteNote, onCr
         setMeetingTitleDraft('');
         setActiveMeetingTitle('');
         setMemoForm({ title: '', content: '' });
-        setMeetingForm({ title: '', issue: '', decision: '', picId: '', deadline: '' });
+        setMeetingForm({ title: '', issue: '', decision: '', picId: currentPicId || '', deadline: '' });
     };
 
     const submitMemo = async (e) => {
@@ -1820,7 +1823,7 @@ const NotesPage = ({ notes, members, onAddNote, onUpdateNote, onDeleteNote, onCr
     const openMeetingRowForm = (title) => {
         setEditingId(null);
         setActiveMeetingTitle(title);
-        setMeetingForm({ title, issue: '', decision: '', picId: '', deadline: '' });
+        setMeetingForm({ title, issue: '', decision: '', picId: currentPicId || '', deadline: '' });
     };
 
     const openMeetingDetail = (title) => {
@@ -1878,7 +1881,7 @@ const NotesPage = ({ notes, members, onAddNote, onUpdateNote, onDeleteNote, onCr
                     <td>${index + 1}</td>
                     <td>${escapeHtml(meeting.issue)}</td>
                     <td>${escapeHtml(meeting.decision)}</td>
-                    <td>${escapeHtml(pic?.name || 'Tanpa PIC')}</td>
+                    <td>${escapeHtml(pic?.name || ALL_MARKOM_LABEL)}</td>
                     <td>${escapeHtml(formatDeadline(meeting.deadline) || '')}</td>
                     <td>${meeting.isDone ? 'Tuntas' : 'Belum Tuntas'}</td>
                 </tr>
@@ -2248,7 +2251,7 @@ const NotesPage = ({ notes, members, onAddNote, onUpdateNote, onDeleteNote, onCr
                                                         <td className="p-3">
                                                             <div className="flex items-center gap-2 text-sm text-slate-700">
                                                                 {pic ? <span className="w-6 h-6 rounded-full text-white text-[10px] font-bold flex items-center justify-center" style={{ backgroundColor: pic.color }}>{getInitials(pic.name)}</span> : null}
-                                                                <span>{pic?.name || 'Tanpa PIC'}</span>
+                                                                <span>{pic?.name || ALL_MARKOM_LABEL}</span>
                                                             </div>
                                                         </td>
                                                         <td className="p-3 text-sm text-slate-700">{formatDeadline(meeting.deadline) || '-'}</td>
@@ -2608,10 +2611,6 @@ export default function TaskManagerApp() {
 
         bootstrapLogin();
     }, []);
-
-    useEffect(() => {
-        if (currentPicId) setPicFilter(currentPicId);
-    }, [currentPicId]);
 
     const handleCurrentPicChange = (picId) => {
         setCurrentPicId(picId);
@@ -3293,7 +3292,7 @@ export default function TaskManagerApp() {
         setSearchQuery('');
         setStatusFilter('all');
         setPriorityFilter('all');
-        setPicFilter(currentPicId || 'all');
+        setPicFilter('all');
         setSortMode('deadline_asc');
     };
 
@@ -3549,6 +3548,7 @@ export default function TaskManagerApp() {
                             onAddNote={handleAddNote}
                             onUpdateNote={handleUpdateNote}
                             onDeleteNote={handleDeleteNote}
+                            currentPicId={currentPicId}
                             onCreateTaskFromMeeting={handleCreateTaskFromMeeting}
                         />
                     )}
