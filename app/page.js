@@ -241,7 +241,7 @@ const TaskEditModal = ({ task, projects, members, isOpen, onClose, onSave }) => 
                                 onChange={(e) => handleChange('picId', e.target.value)}
                                 className="text-sm border border-slate-200 rounded-2xl p-2.5 focus:border-blue-300 focus:ring-2 focus:ring-blue-100 outline-none bg-white cursor-pointer"
                             >
-                                <option value="">-- Tanpa PIC --</option>
+                                <option value="">{ALL_MARKOM_LABEL}</option>
                                 {members.map(m => <option key={m.id} value={m.id}>{m.name} ({m.position})</option>)}
                             </select>
                         </div>
@@ -570,7 +570,7 @@ const TaskCard = ({ task, members, onEdit, onDelete, onUpdatePriority, onUpdateS
                             onBlur={() => setIsEditingPic(false)}
                             className="text-xs border border-purple-500 rounded outline-none p-1 bg-white absolute z-10 top-2"
                         >
-                            <option value="">-- Tanpa PIC --</option>
+                            <option value="">{ALL_MARKOM_LABEL}</option>
                             {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                         </select>
                     ) : (
@@ -711,7 +711,7 @@ const TaskCard = ({ task, members, onEdit, onDelete, onUpdatePriority, onUpdateS
                                 onBlur={() => setIsEditingPic(false)}
                                 className="text-[10px] border border-purple-500 rounded outline-none p-0.5 bg-white absolute right-0 bottom-0 min-w-[90px] z-10"
                             >
-                                <option value="">Tanpa PIC</option>
+                                <option value="">{ALL_MARKOM_LABEL}</option>
                                 {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                             </select>
                         ) : (
@@ -1118,7 +1118,7 @@ const QuickAddTask = ({ projects, members, defaultPicId = '', onAddTask }) => {
                     onChange={(e) => setForm(prev => ({ ...prev, picId: e.target.value }))}
                     className="w-full sm:w-auto border border-gray-300 rounded-md px-3 py-2 text-sm bg-white outline-none focus:border-gray-700 focus:ring-1 focus:ring-gray-700"
                 >
-                    <option value="">Tanpa PIC</option>
+                    <option value="">{ALL_MARKOM_LABEL}</option>
                     {members.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}
                 </select>
                 <input
@@ -1401,7 +1401,7 @@ const MainDashboard = ({ tasks, projects, members, shortcuts, currentPicId = '',
                     className="border border-white/80 rounded-2xl px-3 py-2 text-sm bg-white/75 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100 min-w-[180px] shadow-sm"
                 >
                     <option value="all">Semua PIC</option>
-                    <option value="none">Tanpa PIC</option>
+                    <option value="none">{ALL_MARKOM_LABEL}</option>
                     {members.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}
                 </select>
             </div>
@@ -1523,7 +1523,7 @@ const MarkomCalendar = ({ tasks, projects, members, currentPicId = '', onEdit, o
                         className="border border-white/80 rounded-2xl px-3 py-2 text-sm bg-white/75 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100 shadow-sm"
                     >
                         <option value="all">Semua PIC</option>
-                        <option value="none">Tanpa PIC</option>
+                        <option value="none">{ALL_MARKOM_LABEL}</option>
                         {members.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}
                     </select>
                 </div>
@@ -1698,7 +1698,7 @@ const TaskControls = ({
                 </select>
                 <select value={picFilter} onChange={(e) => setPicFilter(e.target.value)} className="w-full sm:w-auto border border-white/80 rounded-2xl px-3 py-2 text-sm bg-white/75 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100">
                     <option value="all">PIC</option>
-                    <option value="none">Tanpa PIC</option>
+                    <option value="none">{ALL_MARKOM_LABEL}</option>
                     {members.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}
                 </select>
                 <select value={sortMode} onChange={(e) => setSortMode(e.target.value)} className="w-full sm:w-auto border border-white/80 rounded-2xl px-3 py-2 text-sm bg-white/75 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100">
@@ -2197,7 +2197,7 @@ const NotesPage = ({ notes, members, onAddNote, onUpdateNote, onDeleteNote, onCr
                                             onChange={(e) => setMeetingForm(prev => ({ ...prev, picId: e.target.value }))}
                                             className="rounded-2xl border border-white/80 bg-white px-4 py-3 text-sm outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
                                         >
-                                            <option value="">Tanpa PIC</option>
+                                            <option value="">{ALL_MARKOM_LABEL}</option>
                                             {members.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}
                                         </select>
                                         <input
