@@ -990,27 +990,27 @@ const SidebarLottie = () => {
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
         if (currentMinutes >= 8 * 60 && currentMinutes < 10 * 60) {
-            return { label: 'Pagi', text: 'Pagi Manis! Semangat bekerja 😼' };
+            return { label: 'Meow!', text: '“Pagi Manis! Semangat bekerja 😼”' };
         }
 
         if (currentMinutes >= 10 * 60 && currentMinutes < 11 * 60 + 30) {
-            return { label: 'Fokus', text: 'Tetap Fokus walau mulai lapar 😼' };
+            return { label: 'Meow!', text: '“Tetap Fokus walau mulai lapar 😼”' };
         }
 
         if (currentMinutes >= 11 * 60 + 30 && currentMinutes < 13 * 60) {
-            return { label: 'Lunch', text: 'Jangan lupa makan siang yah 🍱' };
+            return { label: 'Meow!', text: '“Jangan lupa makan siang yah 🍱”' };
         }
 
         if (currentMinutes >= 13 * 60 && currentMinutes < 16 * 60) {
-            return { label: 'Melek', text: 'Jam rawan nih! Yuk Minum dulu😼' };
+            return { label: 'Meow!', text: '“Jam rawan nih! Yuk Minum dulu😼”' };
         }
 
-        return { label: 'Pulang', text: 'Waktunya Pulang, Hati2 dijalan 🌙' };
+        return { label: 'Meow!', text: '“Waktunya Pulang, Hati2 dijalan 🌙”' };
     };
 
     const [catMessage, setCatMessage] = useState({
-        label: 'Halo!',
-        text: 'Meong, siap menemani.'
+        label: 'Meow!',
+        text: '“Meong, siap menemani.”'
     });
 
     useEffect(() => {
