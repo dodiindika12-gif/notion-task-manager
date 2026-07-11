@@ -988,50 +988,29 @@ const SidebarLottie = () => {
     const getCatMessage = () => {
         const now = new Date();
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
-        const pick = (messages) => messages[Math.floor(now.getMinutes() / 5) % messages.length];
 
         if (currentMinutes >= 8 * 60 && currentMinutes < 10 * 60) {
-            return pick([
-                { label: 'Pagi produktif', text: 'Selamat pagi! Buka dashboard, rapikan prioritas, lalu gas tipis tapi pasti. Semangat kerja! ☀️' },
-                { label: 'Mode pagi', text: 'Pagi, Tim Markom! Kucing sudah rebahan, tapi target kita tetap jalan. Semangat ya! 🐾' },
-                { label: 'Start cantik', text: 'Selamat pagi! Hari ini kita kerja rapi, cepat, dan tetap kece. Jangan kalah sama notifikasi. ✨' }
-            ]);
+            return { label: 'Pagi', text: 'Pagi Manis! Semangat bekerja 😼' };
         }
 
         if (currentMinutes >= 10 * 60 && currentMinutes < 11 * 60 + 30) {
-            return pick([
-                { label: 'Tetap fokus', text: 'Mode fokus menyala. Kerjakan satu-satu, jangan biarkan task kabur dari kandang. 😼' },
-                { label: 'Gas tengah pagi', text: 'Semangat! Kalau mulai banyak distraksi, tarik napas lalu pilih satu task paling penting.' },
-                { label: 'Fokus dulu', text: 'Kucing mengawasi dari rebahan. Tetap fokus, progress kecil tetap progress. 🐱' }
-            ]);
+            return { label: 'Fokus', text: 'Tetap Fokus walau mulai lapar 😼' };
         }
 
         if (currentMinutes >= 11 * 60 + 30 && currentMinutes < 13 * 60) {
-            return pick([
-                { label: 'Makan siang', text: 'Jangan lupa makan siang. Ide bagus jarang muncul dari perut yang protes. 🍱' },
-                { label: 'Isi energi', text: 'Waktunya recharge. Makan dulu, biar sore nanti tidak mode low battery. 🔋' },
-                { label: 'Lunch break', text: 'Pause sebentar tidak apa-apa. Makan siang dulu, task bisa lanjut setelah tenaga balik. 🥗' }
-            ]);
+            return { label: 'Lunch', text: 'Jangan lupa makan siang yah 🍱' };
         }
 
         if (currentMinutes >= 13 * 60 && currentMinutes < 16 * 60) {
-            return pick([
-                { label: 'Anti ngantuk', text: 'Jam rawan ngantuk! Minum air, cek prioritas, lalu lanjut fokus pelan-pelan. 😺' },
-                { label: 'Sore produktif', text: 'Tetap fokus. Kalau mata mulai berat, task kecil dulu untuk bangunin momentum.' },
-                { label: 'Jangan menyerah', text: 'Kucing boleh rebahan, kita jangan. Satu checklist lagi sebelum sore! ✅' }
-            ]);
+            return { label: 'Melek', text: 'Jam rawan nih! Yuk Minum dulu😼' };
         }
 
-        return pick([
-            { label: 'Saatnya pulang', text: 'Sudah waktunya pulang. Simpan kerjaan, rapikan catatan, hati-hati di jalan ya. 🌙' },
-            { label: 'Tutup hari', text: 'Kerja hari ini cukup. Besok kita lanjut lagi dengan kepala lebih segar. Pulang aman! 🐾' },
-            { label: 'Good job', text: 'Terima kasih sudah bertahan hari ini. Jangan lupa istirahat, bukan cuma laptop yang butuh sleep mode. 😴' }
-        ]);
+        return { label: 'Pulang', text: 'Waktunya Pulang, Hati2 dijalan 🌙' };
     };
 
     const [catMessage, setCatMessage] = useState({
         label: 'Halo!',
-        text: 'Sebentar ya, kucingnya lagi menyiapkan kalimat penyemangat. 🐾'
+        text: 'Meong, siap menemani.'
     });
 
     useEffect(() => {
