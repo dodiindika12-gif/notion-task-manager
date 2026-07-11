@@ -985,16 +985,86 @@ const FavoriteShortcuts = ({ shortcuts }) => {
 };
 
 const SidebarLottie = () => {
+    const getCatMessage = () => {
+        const now = new Date();
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        const pick = (messages) => messages[Math.floor(now.getMinutes() / 5) % messages.length];
+
+        if (currentMinutes >= 8 * 60 && currentMinutes < 10 * 60) {
+            return pick([
+                { label: 'Pagi produktif', text: 'Selamat pagi! Buka dashboard, rapikan prioritas, lalu gas tipis tapi pasti. Semangat kerja! ☀️' },
+                { label: 'Mode pagi', text: 'Pagi, Tim Markom! Kucing sudah rebahan, tapi target kita tetap jalan. Semangat ya! 🐾' },
+                { label: 'Start cantik', text: 'Selamat pagi! Hari ini kita kerja rapi, cepat, dan tetap kece. Jangan kalah sama notifikasi. ✨' }
+            ]);
+        }
+
+        if (currentMinutes >= 10 * 60 && currentMinutes < 11 * 60 + 30) {
+            return pick([
+                { label: 'Tetap fokus', text: 'Mode fokus menyala. Kerjakan satu-satu, jangan biarkan task kabur dari kandang. 😼' },
+                { label: 'Gas tengah pagi', text: 'Semangat! Kalau mulai banyak distraksi, tarik napas lalu pilih satu task paling penting.' },
+                { label: 'Fokus dulu', text: 'Kucing mengawasi dari rebahan. Tetap fokus, progress kecil tetap progress. 🐱' }
+            ]);
+        }
+
+        if (currentMinutes >= 11 * 60 + 30 && currentMinutes < 13 * 60) {
+            return pick([
+                { label: 'Makan siang', text: 'Jangan lupa makan siang. Ide bagus jarang muncul dari perut yang protes. 🍱' },
+                { label: 'Isi energi', text: 'Waktunya recharge. Makan dulu, biar sore nanti tidak mode low battery. 🔋' },
+                { label: 'Lunch break', text: 'Pause sebentar tidak apa-apa. Makan siang dulu, task bisa lanjut setelah tenaga balik. 🥗' }
+            ]);
+        }
+
+        if (currentMinutes >= 13 * 60 && currentMinutes < 16 * 60) {
+            return pick([
+                { label: 'Anti ngantuk', text: 'Jam rawan ngantuk! Minum air, cek prioritas, lalu lanjut fokus pelan-pelan. 😺' },
+                { label: 'Sore produktif', text: 'Tetap fokus. Kalau mata mulai berat, task kecil dulu untuk bangunin momentum.' },
+                { label: 'Jangan menyerah', text: 'Kucing boleh rebahan, kita jangan. Satu checklist lagi sebelum sore! ✅' }
+            ]);
+        }
+
+        return pick([
+            { label: 'Saatnya pulang', text: 'Sudah waktunya pulang. Simpan kerjaan, rapikan catatan, hati-hati di jalan ya. 🌙' },
+            { label: 'Tutup hari', text: 'Kerja hari ini cukup. Besok kita lanjut lagi dengan kepala lebih segar. Pulang aman! 🐾' },
+            { label: 'Good job', text: 'Terima kasih sudah bertahan hari ini. Jangan lupa istirahat, bukan cuma laptop yang butuh sleep mode. 😴' }
+        ]);
+    };
+
+    const [catMessage, setCatMessage] = useState({
+        label: 'Halo!',
+        text: 'Sebentar ya, kucingnya lagi menyiapkan kalimat penyemangat. 🐾'
+    });
+
+    useEffect(() => {
+        const updateMessage = () => setCatMessage(getCatMessage());
+        updateMessage();
+        const timer = setInterval(updateMessage, 60 * 1000);
+        return () => clearInterval(timer);
+    }, []);
+
     return (
-        <div className="mx-4 mb-3 overflow-hidden rounded-3xl border border-white/70 bg-white/70 shadow-xl shadow-slate-200/40 backdrop-blur">
-            <iframe
-                title="Animasi Dashboard Markom"
-                src="https://lottie.host/embed/e27f78ef-9d58-4e5e-9ee9-0b7697c05ce3/mmF7jYG0uY.json"
-                className="h-32 w-full border-0"
-                loading="lazy"
-                allow="autoplay"
-                referrerPolicy="no-referrer"
-            />
+        <div className="mx-4 mb-3 rounded-3xl border border-white/70 bg-white/70 p-3 shadow-xl shadow-slate-200/40 backdrop-blur">
+            <div className="flex items-center gap-2">
+                <div className="h-28 w-[92px] shrink-0 overflow-hidden rounded-2xl bg-white/40">
+                    <iframe
+                        title="Kucing Markom"
+                        src="https://lottie.host/embed/2b4ca9fe-db32-4fb7-9183-b4818396aee4/jtijKh5OVk.json"
+                        className="h-full w-full scale-110 border-0"
+                        loading="lazy"
+                        allow="autoplay"
+                        referrerPolicy="no-referrer"
+                    />
+                </div>
+
+                <div className="relative flex-1 rounded-2xl border border-white/80 bg-white/90 px-3 py-2 shadow-sm">
+                    <span className="absolute -left-1.5 top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 border-b border-l border-white/80 bg-white/90"></span>
+                    <div className="relative text-[9px] font-bold uppercase tracking-[0.14em] text-indigo-500">
+                        {catMessage.label}
+                    </div>
+                    <div className="relative mt-1 text-[11px] font-semibold leading-snug text-slate-800">
+                        {catMessage.text}
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };
