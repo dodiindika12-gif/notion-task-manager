@@ -984,6 +984,21 @@ const FavoriteShortcuts = ({ shortcuts }) => {
     );
 };
 
+const SidebarLottie = () => {
+    return (
+        <div className="mx-4 mb-3 overflow-hidden rounded-3xl border border-white/70 bg-white/70 shadow-xl shadow-slate-200/40 backdrop-blur">
+            <iframe
+                title="Animasi Dashboard Markom"
+                src="https://lottie.host/embed/e27f78ef-9d58-4e5e-9ee9-0b7697c05ce3/mmF7jYG0uY.json"
+                className="h-32 w-full border-0"
+                loading="lazy"
+                allow="autoplay"
+                referrerPolicy="no-referrer"
+            />
+        </div>
+    );
+};
+
 const SidebarClock = () => {
     const [time, setTime] = useState('--:--:--');
     const [date, setDate] = useState('');
@@ -3455,6 +3470,7 @@ export default function TaskManagerApp() {
                     ))}
                 </nav>
                 
+                <SidebarLottie />
                 <SidebarClock />
             </div>
             
