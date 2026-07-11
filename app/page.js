@@ -984,32 +984,34 @@ const FavoriteShortcuts = ({ shortcuts }) => {
     );
 };
 
-const SidebarLottie = () => {
+const SidebarLottie = ({ picName = '' }) => {
+    const displayPicName = picName?.trim() || 'Tim';
+    const catLabel = `Meow ${displayPicName}!`;
+
     const getCatMessage = () => {
         const now = new Date();
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
         if (currentMinutes >= 8 * 60 && currentMinutes < 10 * 60) {
-            return { label: 'Meow!', text: '“Pagi Manis! Semangat bekerja 😼”' };
+            return { text: '“Pagi Manis! Semangat bekerja 😼”' };
         }
 
         if (currentMinutes >= 10 * 60 && currentMinutes < 11 * 60 + 30) {
-            return { label: 'Meow!', text: '“Tetap Fokus walau mulai lapar 😼”' };
+            return { text: '“Tetap Fokus walau mulai lapar 😼”' };
         }
 
         if (currentMinutes >= 11 * 60 + 30 && currentMinutes < 13 * 60) {
-            return { label: 'Meow!', text: '“Jangan lupa makan siang yah 🍱”' };
+            return { text: '“Jangan lupa makan siang yah 🍱”' };
         }
 
         if (currentMinutes >= 13 * 60 && currentMinutes < 16 * 60) {
-            return { label: 'Meow!', text: '“Jam rawan nih! Yuk Minum dulu😼”' };
+            return { text: '“Jam rawan nih! Yuk Minum dulu😼”' };
         }
 
-        return { label: 'Meow!', text: '“Waktunya Pulang, Hati2 dijalan 🌙”' };
+        return { text: '“Waktunya Pulang, Hati2 dijalan 🌙”' };
     };
 
     const [catMessage, setCatMessage] = useState({
-        label: 'Meow!',
         text: '“Meong, siap menemani.”'
     });
 
@@ -1037,7 +1039,7 @@ const SidebarLottie = () => {
                 <div className="relative flex-1 rounded-2xl border border-white/80 bg-white/90 px-3 py-2 shadow-sm">
                     <span className="absolute -left-1.5 top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 border-b border-l border-white/80 bg-white/90"></span>
                     <div className="relative text-[9px] font-bold uppercase tracking-[0.14em] text-indigo-500">
-                        {catMessage.label}
+                        {catLabel}
                     </div>
                     <div className="relative mt-1 text-[11px] font-semibold leading-snug text-slate-800">
                         {catMessage.text}
@@ -3519,7 +3521,7 @@ export default function TaskManagerApp() {
                     ))}
                 </nav>
                 
-                <SidebarLottie />
+                <SidebarLottie picName={members.find(member => member.id === currentPicId)?.name || 'Tim'} />
                 <SidebarClock />
             </div>
             
