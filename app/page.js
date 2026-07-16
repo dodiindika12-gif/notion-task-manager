@@ -42,13 +42,143 @@ const SEED_SHORTCUTS = [
 const SEED_NOTES = [];
 
 const PRIORITIES = {
-    'High': { color: 'text-red-700 bg-red-100', icon: 'fa-angles-up' },
-    'Medium': { color: 'text-yellow-700 bg-yellow-100', icon: 'fa-angle-up' },
-    'Low': { color: 'text-blue-700 bg-blue-100', icon: 'fa-angle-down' }
+    'High': { color: 'text-pink-700 bg-pink-100', icon: 'fa-angles-up' },
+    'Medium': { color: 'text-orange-700 bg-orange-100', icon: 'fa-angle-up' },
+    'Low': { color: 'text-sky-700 bg-sky-100', icon: 'fa-angle-down' }
 };
 
 const COLUMNS = ['To Do', 'In Progress', 'Done'];
 const ALL_MARKOM_LABEL = 'All Tim Markom';
+
+const COLUMN_TINTS = {
+    'To Do': { chip: 'tint-sky', header: 'bg-sky-50/70', drop: 'bg-sky-50/40 border-sky-100' },
+    'In Progress': { chip: 'tint-lavender', header: 'bg-violet-50/70', drop: 'bg-violet-50/40 border-violet-100' },
+    'Done': { chip: 'tint-mint', header: 'bg-emerald-50/70', drop: 'bg-emerald-50/40 border-emerald-100' }
+};
+
+const getGreeting = (date = new Date()) => {
+    const hour = date.getHours();
+    if (hour >= 4 && hour < 11) return 'Selamat Pagi';
+    if (hour >= 11 && hour < 15) return 'Selamat Siang';
+    if (hour >= 15 && hour < 18) return 'Selamat Sore';
+    return 'Selamat Malam';
+};
+
+const ProgressRing = ({ percent = 0, size = 32, stroke = 4, color = '#7c3aed', trackColor = '#ede9fe' }) => {
+    const radius = (size - stroke) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const clamped = Math.max(0, Math.min(100, percent));
+    const offset = circumference - (clamped / 100) * circumference;
+
+    return (
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0 -rotate-90">
+            <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={trackColor} strokeWidth={stroke} />
+            <circle
+                cx={size / 2}
+                cy={size / 2}
+                r={radius}
+                fill="none"
+                stroke={color}
+                strokeWidth={stroke}
+                strokeDasharray={circumference}
+                strokeDashoffset={offset}
+                strokeLinecap="round"
+            />
+        </svg>
+    );
+};
+
+const KENDARI_LAT = -3.9450;
+const KENDARI_LON = 122.4989;
+
+const WEATHER_CODE_MAP = {
+    0: { label: 'Cerah', icon: 'fa-sun' },
+    1: { label: 'Cerah Berawan', icon: 'fa-cloud-sun' },
+    2: { label: 'Berawan Sebagian', icon: 'fa-cloud-sun' },
+    3: { label: 'Berawan', icon: 'fa-cloud' },
+    45: { label: 'Berkabut', icon: 'fa-smog' },
+    48: { label: 'Berkabut', icon: 'fa-smog' },
+    51: { label: 'Gerimis Ringan', icon: 'fa-cloud-rain' },
+    53: { label: 'Gerimis', icon: 'fa-cloud-rain' },
+    55: { label: 'Gerimis Lebat', icon: 'fa-cloud-rain' },
+    61: { label: 'Hujan Ringan', icon: 'fa-cloud-showers-heavy' },
+    63: { label: 'Hujan', icon: 'fa-cloud-showers-heavy' },
+    65: { label: 'Hujan Lebat', icon: 'fa-cloud-showers-heavy' },
+    80: { label: 'Hujan Lokal', icon: 'fa-cloud-showers-heavy' },
+    81: { label: 'Hujan Lokal Lebat', icon: 'fa-cloud-showers-heavy' },
+    82: { label: 'Hujan Sangat Lebat', icon: 'fa-cloud-showers-heavy' },
+    95: { label: 'Badai Petir', icon: 'fa-bolt' },
+    96: { label: 'Badai Petir', icon: 'fa-bolt' },
+    99: { label: 'Badai Petir', icon: 'fa-bolt' }
+};
+
+const getWeatherInfo = (code) => WEATHER_CODE_MAP[code] || { label: 'Tidak diketahui', icon: 'fa-cloud' };
+
+const WeatherWidget = () => {
+    const [state, setState] = useState({ status: 'loading', current: null, tempMax: null, tempMin: null });
+
+    useEffect(() => {
+        let cancelled = false;
+
+        fetch(`https://api.open-meteo.com/v1/forecast?latitude=${KENDARI_LAT}&longitude=${KENDARI_LON}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=Asia%2FMakassar`)
+            .then(res => res.json())
+            .then(data => {
+                if (cancelled) return;
+                if (!data?.current) {
+                    setState({ status: 'error', current: null, tempMax: null, tempMin: null });
+                    return;
+                }
+                setState({
+                    status: 'ready',
+                    current: data.current,
+                    tempMax: data.daily?.temperature_2m_max?.[0] ?? null,
+                    tempMin: data.daily?.temperature_2m_min?.[0] ?? null
+                });
+            })
+            .catch(() => {
+                if (!cancelled) setState({ status: 'error', current: null, tempMax: null, tempMin: null });
+            });
+
+        return () => { cancelled = true; };
+    }, []);
+
+    if (state.status === 'loading') {
+        return (
+            <div className="flex items-center gap-2 text-white/70 text-sm px-4 py-2.5">
+                <i className="fa-solid fa-spinner fa-spin"></i>
+                <span>Memuat cuaca...</span>
+            </div>
+        );
+    }
+
+    if (state.status === 'error') {
+        return (
+            <div className="flex items-center gap-2 text-white/70 text-sm px-4 py-2.5">
+                <i className="fa-solid fa-circle-exclamation"></i>
+                <span>Cuaca tidak tersedia</span>
+            </div>
+        );
+    }
+
+    const info = getWeatherInfo(state.current.weather_code);
+    const temp = Math.round(state.current.temperature_2m);
+
+    return (
+        <div className="flex items-center gap-3 bg-white/15 rounded-2xl px-4 py-2.5">
+            <i className={`fa-solid ${info.icon} text-3xl`}></i>
+            <div>
+                <div className="text-xs text-white/70">Kendari</div>
+                <div className="flex items-baseline gap-1.5">
+                    <span className="text-xl font-bold leading-none">{temp}°C</span>
+                    <span className="text-xs text-white/80">{info.label}</span>
+                </div>
+                {(state.tempMax !== null && state.tempMin !== null) && (
+                    <div className="text-[10px] text-white/60 mt-0.5">H: {Math.round(state.tempMax)}° L: {Math.round(state.tempMin)}°</div>
+                )}
+            </div>
+        </div>
+    );
+};
 
 const getInitials = (name) => {
     if (!name) return '?';
@@ -206,7 +336,7 @@ const TaskEditModal = ({ task, projects, members, isOpen, onClose, onSave }) => 
                             <select 
                                 value={editedTask.projectId || ''} 
                                 onChange={(e) => handleChange('projectId', e.target.value)}
-                                className="text-sm border border-slate-200 rounded-2xl p-2.5 focus:border-blue-300 focus:ring-2 focus:ring-blue-100 outline-none bg-white cursor-pointer"
+                                className="text-sm border border-slate-200 rounded-2xl p-2.5 focus:border-violet-300 focus:ring-2 focus:ring-violet-100 outline-none bg-white cursor-pointer"
                             >
                                 <option value="">-- Pilih Project --</option>
                                 {projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
@@ -217,7 +347,7 @@ const TaskEditModal = ({ task, projects, members, isOpen, onClose, onSave }) => 
                             <select 
                                 value={editedTask.status || 'To Do'} 
                                 onChange={(e) => handleChange('status', e.target.value)}
-                                className="text-sm border border-slate-200 rounded-2xl p-2.5 focus:border-blue-300 focus:ring-2 focus:ring-blue-100 outline-none bg-white cursor-pointer"
+                                className="text-sm border border-slate-200 rounded-2xl p-2.5 focus:border-violet-300 focus:ring-2 focus:ring-violet-100 outline-none bg-white cursor-pointer"
                             >
                                 {COLUMNS.map(col => <option key={col} value={col}>{col}</option>)}
                             </select>
@@ -227,7 +357,7 @@ const TaskEditModal = ({ task, projects, members, isOpen, onClose, onSave }) => 
                             <select 
                                 value={editedTask.priority || 'Medium'} 
                                 onChange={(e) => handleChange('priority', e.target.value)}
-                                className="text-sm border border-slate-200 rounded-2xl p-2.5 focus:border-blue-300 focus:ring-2 focus:ring-blue-100 outline-none bg-white cursor-pointer"
+                                className="text-sm border border-slate-200 rounded-2xl p-2.5 focus:border-violet-300 focus:ring-2 focus:ring-violet-100 outline-none bg-white cursor-pointer"
                             >
                                 <option value="Low">Low</option>
                                 <option value="Medium">Medium</option>
@@ -239,7 +369,7 @@ const TaskEditModal = ({ task, projects, members, isOpen, onClose, onSave }) => 
                             <select 
                                 value={editedTask.picId || ''} 
                                 onChange={(e) => handleChange('picId', e.target.value)}
-                                className="text-sm border border-slate-200 rounded-2xl p-2.5 focus:border-blue-300 focus:ring-2 focus:ring-blue-100 outline-none bg-white cursor-pointer"
+                                className="text-sm border border-slate-200 rounded-2xl p-2.5 focus:border-violet-300 focus:ring-2 focus:ring-violet-100 outline-none bg-white cursor-pointer"
                             >
                                 <option value="">{ALL_MARKOM_LABEL}</option>
                                 {members.map(m => <option key={m.id} value={m.id}>{m.name} ({m.position})</option>)}
@@ -251,7 +381,7 @@ const TaskEditModal = ({ task, projects, members, isOpen, onClose, onSave }) => 
                                 type="date" 
                                 value={editedTask.deadline || ''} 
                                 onChange={(e) => handleChange('deadline', e.target.value)}
-                                className="text-sm border border-slate-200 rounded-2xl p-2.5 focus:border-blue-300 focus:ring-2 focus:ring-blue-100 outline-none bg-white cursor-pointer w-full"
+                                className="text-sm border border-slate-200 rounded-2xl p-2.5 focus:border-violet-300 focus:ring-2 focus:ring-violet-100 outline-none bg-white cursor-pointer w-full"
                             />
                         </div>
                     </div>
@@ -278,12 +408,12 @@ const TaskEditModal = ({ task, projects, members, isOpen, onClose, onSave }) => 
                                         type="text"
                                         value={todo.title}
                                         onChange={(e) => handleUpdateTodoTitle(todo.id, e.target.value)}
-                                        className={`flex-1 text-sm border border-slate-200 rounded-2xl px-3 py-2 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100 ${todo.done ? 'text-gray-400 line-through bg-slate-50' : 'text-gray-800 bg-white'}`}
+                                        className={`flex-1 text-sm border border-slate-200 rounded-2xl px-3 py-2 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 ${todo.done ? 'text-gray-400 line-through bg-slate-50' : 'text-gray-800 bg-white'}`}
                                     />
                                     <select
                                         value={todo.picId || ''}
                                         onChange={(e) => handleUpdateTodoPic(todo.id, e.target.value)}
-                                        className="text-xs border border-slate-200 rounded-2xl px-3 py-2 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100 bg-white text-slate-600 max-sm:col-start-2 max-sm:w-full"
+                                        className="text-xs border border-slate-200 rounded-2xl px-3 py-2 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 bg-white text-slate-600 max-sm:col-start-2 max-sm:w-full"
                                         title="PIC sub-kegiatan"
                                     >
                                         <option value="">{ALL_MARKOM_LABEL}</option>
@@ -318,7 +448,7 @@ const TaskEditModal = ({ task, projects, members, isOpen, onClose, onSave }) => 
                                     }
                                 }}
                                 placeholder="Tambah sub-kegiatan..."
-                                className="flex-1 text-sm border border-slate-200 rounded-2xl px-3 py-2 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                                className="flex-1 text-sm border border-slate-200 rounded-2xl px-3 py-2 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
                             />
                             <button
                                 type="button"
@@ -427,7 +557,7 @@ const CustomDialog = ({ dialog, closeDialog }) => {
     );
 };
 
-const TaskCard = ({ task, members, onEdit, onDelete, onUpdatePriority, onUpdateStatus, onUpdateTask, isListView = false }) => {
+const TaskCard = ({ task, members, projects = [], onEdit, onDelete, onUpdatePriority, onUpdateStatus, onUpdateTask, isListView = false }) => {
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState(task.title);
     const [isEditingDeadline, setIsEditingDeadline] = useState(false);
@@ -482,10 +612,12 @@ const TaskCard = ({ task, members, onEdit, onDelete, onUpdatePriority, onUpdateS
     const isDone = task.status === 'Done';
     const pic = members.find(m => m.id === task.picId);
     const todoProgress = getTodoProgress(task);
+    const project = projects.find(p => p.id === task.projectId);
+    const accentColor = project?.color || '#7c3aed';
 
     if (isListView) {
         return (
-            <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors group">
+            <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors group" style={{ borderLeft: `3px solid ${accentColor}` }}>
                 <td className="p-3">
                     <div className="flex items-start space-x-3">
                         <input
@@ -608,11 +740,12 @@ const TaskCard = ({ task, members, onEdit, onDelete, onUpdatePriority, onUpdateS
     }
 
     return (
-        <div 
+        <div
             draggable="true"
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
             className={`bg-white/80 p-3.5 rounded-3xl border shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-grab active:cursor-grabbing group mb-3 relative flex flex-col min-h-[110px] backdrop-blur ${isDone ? 'border-white/60 bg-white/45' : 'border-white/75'}`}
+            style={{ borderLeft: `3px solid ${accentColor}` }}
         >
             <div className="flex justify-between items-start mb-2">
                 <button onClick={togglePriority} className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${PRIORITIES[task.priority].color} hover:opacity-80 flex items-center`}>
@@ -659,16 +792,11 @@ const TaskCard = ({ task, members, onEdit, onDelete, onUpdatePriority, onUpdateS
             </div>
 
             {todoProgress.total > 0 && (
-                <div className="mb-3 ml-6">
-                    <div className="flex items-center justify-between text-[10px] text-gray-500 mb-1">
-                        <span><i className="fa-regular fa-square-check mr-1"></i>{todoProgress.done}/{todoProgress.total} sub-kegiatan</span>
+                <div className="mb-3 ml-6 flex items-center gap-2">
+                    <div className="relative flex items-center justify-center shrink-0">
+                        <ProgressRing percent={Math.round((todoProgress.done / todoProgress.total) * 100)} size={26} stroke={3} color="#059669" trackColor="#d1fae5" />
                     </div>
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                            className="h-full bg-green-500 rounded-full"
-                            style={{ width: `${Math.round((todoProgress.done / todoProgress.total) * 100)}%` }}
-                        ></div>
-                    </div>
+                    <span className="text-[10px] text-gray-500"><i className="fa-regular fa-square-check mr-1"></i>{todoProgress.done}/{todoProgress.total} sub-kegiatan</span>
                 </div>
             )}
 
@@ -734,7 +862,7 @@ const TaskCard = ({ task, members, onEdit, onDelete, onUpdatePriority, onUpdateS
     );
 };
 
-const KanbanView = ({ tasks, members, onAdd, onEdit, onDelete, onUpdatePriority, onUpdateStatus, onUpdateTask }) => {
+const KanbanView = ({ tasks, members, projects, onAdd, onEdit, onDelete, onUpdatePriority, onUpdateStatus, onUpdateTask }) => {
     const handleDragOver = (e) => {
         e.preventDefault();
         e.currentTarget.classList.add('bg-gray-200', 'border-gray-400', 'border-dashed');
@@ -757,38 +885,40 @@ const KanbanView = ({ tasks, members, onAdd, onEdit, onDelete, onUpdatePriority,
         <div className="flex h-full gap-4 overflow-x-auto pb-4 w-full">
             {COLUMNS.map(column => {
                 const columnTasks = tasks.filter(t => t.status === column);
+                const tint = COLUMN_TINTS[column] || COLUMN_TINTS['To Do'];
                 return (
                     <div key={column} className="flex-1 min-w-[280px] flex flex-col">
-                        <div className="flex items-center justify-between mb-3 px-1">
+                        <div className={`flex items-center justify-between mb-3 px-3 py-2 rounded-2xl ${tint.header}`}>
                             <div className="flex items-center space-x-2">
-                                <h3 className="font-semibold text-sm text-gray-800">{column}</h3>
-                                <span className="bg-gray-100 text-gray-500 text-[11px] font-bold px-2 py-0.5 rounded-full">{columnTasks.length}</span>
+                                <h3 className="font-semibold text-sm text-slate-800">{column}</h3>
+                                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${tint.chip}`}>{columnTasks.length}</span>
                             </div>
-                            <button onClick={() => onAdd(column)} className="text-gray-400 hover:text-gray-800 p-1 rounded hover:bg-gray-200 transition-colors">
+                            <button onClick={() => onAdd(column)} className="text-slate-400 hover:text-slate-800 p-1 rounded hover:bg-white/60 transition-colors">
                                 <i className="fa-solid fa-plus"></i>
                             </button>
                         </div>
-                        
-                        <div 
-                            className="flex-1 bg-white/35 rounded-3xl p-3 transition-colors border border-white/60 min-h-[500px]"
+
+                        <div
+                            className={`flex-1 rounded-3xl p-3 transition-colors border min-h-[500px] ${tint.drop}`}
                             onDragOver={handleDragOver}
                             onDragLeave={handleDragLeave}
                             onDrop={(e) => handleDrop(e, column)}
                         >
                             {columnTasks.map(task => (
-                                <TaskCard 
-                                    key={task.id} 
-                                    task={task} 
+                                <TaskCard
+                                    key={task.id}
+                                    task={task}
                                     members={members}
-                                    onEdit={onEdit} 
-                                    onDelete={onDelete} 
+                                    projects={projects}
+                                    onEdit={onEdit}
+                                    onDelete={onDelete}
                                     onUpdatePriority={onUpdatePriority}
                                     onUpdateStatus={onUpdateStatus}
                                     onUpdateTask={onUpdateTask}
                                 />
                             ))}
-                            
-                            <button 
+
+                            <button
                                 onClick={() => onAdd(column)}
                                 className="w-full mt-1 text-sm text-gray-500 hover:text-gray-900 hover:bg-gray-200 py-2 rounded-md flex items-center space-x-2 px-2 transition-colors text-left"
                             >
@@ -803,7 +933,7 @@ const KanbanView = ({ tasks, members, onAdd, onEdit, onDelete, onUpdatePriority,
     );
 };
 
-const TableView = ({ tasks, members, onAdd, onEdit, onDelete, onUpdatePriority, onUpdateStatus, onUpdateTask }) => {
+const TableView = ({ tasks, members, projects, onAdd, onEdit, onDelete, onUpdatePriority, onUpdateStatus, onUpdateTask }) => {
     return (
         <div className="bg-white/75 rounded-3xl border border-white/70 shadow-xl shadow-slate-200/50 overflow-hidden animate-fade-in backdrop-blur">
             <div className="overflow-x-auto">
@@ -819,12 +949,13 @@ const TableView = ({ tasks, members, onAdd, onEdit, onDelete, onUpdatePriority, 
                     </thead>
                     <tbody className="bg-white/60">
                         {tasks.map(task => (
-                            <TaskCard 
-                                key={task.id} 
+                            <TaskCard
+                                key={task.id}
                                 task={task}
-                                members={members} 
-                                onEdit={onEdit} 
-                                onDelete={onDelete} 
+                                members={members}
+                                projects={projects}
+                                onEdit={onEdit}
+                                onDelete={onDelete}
                                 onUpdatePriority={onUpdatePriority}
                                 onUpdateStatus={onUpdateStatus}
                                 onUpdateTask={onUpdateTask}
@@ -854,9 +985,9 @@ const TableView = ({ tasks, members, onAdd, onEdit, onDelete, onUpdatePriority, 
 const MembersTable = ({ members, onAddMember, onDeleteMember }) => {
     return (
         <div className="bg-white/75 rounded-3xl border border-white/70 shadow-xl shadow-slate-200/50 overflow-hidden animate-fade-in max-w-3xl backdrop-blur">
-            <div className="flex justify-between items-center p-4 border-b border-slate-100">
-                <h3 className="font-semibold text-gray-800 flex items-center"><i className="fa-solid fa-users mr-2 text-gray-500"></i> Daftar Tim</h3>
-                <button onClick={onAddMember} className="bg-black text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm flex items-center">
+            <div className="flex justify-between items-center p-4 border-b border-slate-100 tint-mint">
+                <h3 className="font-semibold flex items-center"><i className="fa-solid fa-users mr-2"></i> Daftar Tim</h3>
+                <button onClick={onAddMember} className="tint-mint-solid px-3 py-1.5 rounded-md text-sm font-medium hover:opacity-90 transition-opacity shadow-sm flex items-center">
                     <i className="fa-solid fa-plus mr-1.5 text-xs"></i> Tambah Anggota
                 </button>
             </div>
@@ -1076,7 +1207,7 @@ const SidebarClock = () => {
     }, []);
 
     return (
-        <div className="mx-4 mb-4 rounded-3xl bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-700 p-4 text-white shadow-xl shadow-blue-950/20">
+        <div className="mx-4 mb-4 rounded-3xl p-4 text-white shadow-xl shadow-violet-300/30" style={{ backgroundImage: 'linear-gradient(135deg, #8b5cf6 0%, #a855f7 50%, #ec4899 100%)' }}>
             <style>{`@import url('https://fonts.googleapis.com/css2?family=Bitcount+Single:wght@500&display=swap');`}</style>
             <div className="text-[10px] uppercase tracking-[0.2em] text-white/55">Waktu Saat Ini</div>
             <div className="mt-2 text-2xl tracking-tight leading-none" style={{ fontFamily: "'Bitcount Single', monospace", fontWeight: 500 }}>{time}</div>
@@ -1454,17 +1585,30 @@ const MainDashboard = ({ tasks, projects, members, shortcuts, currentPicId = '',
             return aTime - bTime || b.active - a.active;
         });
 
+    const currentPic = members.find(member => member.id === currentPicId);
+    const todayLabel = today.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
     return (
         <div className="w-full max-w-[1500px] animate-fade-in">
-            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-5">
-                <div>
-                    <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">Dashboard</h2>
-                    <p className="text-sm text-slate-500 mt-1">Ruang kerja ringkas untuk deadline, project, dan shortcut Markom.</p>
+            <div className="relative overflow-hidden rounded-3xl mb-5 p-5 sm:p-6 shadow-xl shadow-sky-200/40 text-white" style={{ backgroundImage: 'linear-gradient(120deg, #7c3aed 0%, #c026d3 45%, #0284c7 100%)' }}>
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <div className="text-xs font-semibold uppercase tracking-wider text-white/70">{todayLabel}</div>
+                        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mt-1">{getGreeting()}, {currentPic?.name || 'Tim'}! 👋</h2>
+                        <p className="text-sm text-white/80 mt-1">Ruang kerja ringkas untuk deadline, project, dan shortcut Markom.</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <WeatherWidget />
+                    </div>
                 </div>
+            </div>
+
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-5">
+                <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-950">Ringkasan Task</h2>
                 <select
                     value={dashboardPicFilter}
                     onChange={(e) => setDashboardPicFilter(e.target.value)}
-                    className="border border-white/80 rounded-2xl px-3 py-2 text-sm bg-white/75 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100 min-w-[180px] shadow-sm"
+                    className="border border-white/80 rounded-2xl px-3 py-2 text-sm bg-white/75 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 min-w-[180px] shadow-sm"
                 >
                     <option value="all">Semua PIC</option>
                     <option value="none">{ALL_MARKOM_LABEL}</option>
@@ -1583,7 +1727,7 @@ const MarkomCalendar = ({ tasks, projects, members, currentPicId = '', onEdit, o
                     <select
                         value={picFilter}
                         onChange={(e) => setPicFilter(e.target.value)}
-                        className="border border-white/80 rounded-2xl px-3 py-2 text-sm bg-white/75 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100 shadow-sm"
+                        className="border border-white/80 rounded-2xl px-3 py-2 text-sm bg-white/75 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 shadow-sm"
                     >
                         <option value="all">Semua PIC</option>
                         <option value="none">{ALL_MARKOM_LABEL}</option>
@@ -1593,8 +1737,8 @@ const MarkomCalendar = ({ tasks, projects, members, currentPicId = '', onEdit, o
             </div>
 
             <div className="border border-white/70 rounded-3xl bg-white/75 p-3 mb-4 shadow-xl shadow-slate-200/40 backdrop-blur">
-                <div className="text-sm font-semibold text-gray-800 mb-2">Filter Project Kalender</div>
-                <div className="flex flex-wrap gap-2">
+                <div className="text-sm font-semibold mb-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg tint-lavender">Filter Project Kalender</div>
+                <div className="flex flex-wrap gap-2 mt-1">
                     {projects.map(project => (
                         <label
                             key={project.id}
@@ -1704,18 +1848,21 @@ const MarkomCalendar = ({ tasks, projects, members, currentPicId = '', onEdit, o
 
 const TaskSummary = ({ stats }) => {
     const items = [
-        { label: 'Total', value: stats.total, color: 'text-gray-900' },
-        { label: 'Selesai', value: stats.done, color: 'text-green-700' },
-        { label: 'Overdue', value: stats.overdue, color: 'text-red-700' },
-        { label: 'Hari Ini', value: stats.today, color: 'text-orange-700' }
+        { label: 'Total', value: stats.total, tint: 'tint-lavender', icon: 'fa-solid fa-list-check' },
+        { label: 'Selesai', value: stats.done, tint: 'tint-mint', icon: 'fa-solid fa-circle-check' },
+        { label: 'Overdue', value: stats.overdue, tint: 'tint-pink', icon: 'fa-solid fa-triangle-exclamation' },
+        { label: 'Hari Ini', value: stats.today, tint: 'tint-peach', icon: 'fa-solid fa-clock' }
     ];
 
     return (
         <div className="w-full flex flex-wrap items-center gap-2 mb-4">
             {items.map(item => (
-                <div key={item.label} className="inline-flex items-center gap-2 border border-white/75 rounded-2xl bg-white/75 px-3 py-2 text-sm shadow-sm">
-                    <span className="text-slate-500">{item.label}</span>
-                    <span className={`font-bold ${item.color}`}>{item.value}</span>
+                <div key={item.label} className={`inline-flex items-center gap-2.5 rounded-2xl px-3 py-2 text-sm shadow-sm ${item.tint}`}>
+                    <span className="w-6 h-6 rounded-lg bg-white/60 flex items-center justify-center text-xs">
+                        <i className={item.icon}></i>
+                    </span>
+                    <span className="opacity-80">{item.label}</span>
+                    <span className="font-bold">{item.value}</span>
                 </div>
             ))}
         </div>
@@ -1746,25 +1893,25 @@ const TaskControls = ({
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Cari task..."
-                        className="w-full border border-white/80 rounded-2xl bg-white/75 pl-8 pr-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                        className="w-full border border-white/80 rounded-2xl bg-white/75 pl-8 pr-3 py-2 text-sm outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
                     />
                 </div>
-                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full sm:w-auto border border-white/80 rounded-2xl px-3 py-2 text-sm bg-white/75 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100">
+                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full sm:w-auto border border-white/80 rounded-2xl px-3 py-2 text-sm bg-white/75 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100">
                     <option value="all">Status</option>
                     {COLUMNS.map(status => <option key={status} value={status}>{status}</option>)}
                 </select>
-                <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} className="w-full sm:w-auto border border-white/80 rounded-2xl px-3 py-2 text-sm bg-white/75 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100">
+                <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} className="w-full sm:w-auto border border-white/80 rounded-2xl px-3 py-2 text-sm bg-white/75 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100">
                     <option value="all">Prioritas</option>
                     <option value="High">High</option>
                     <option value="Medium">Medium</option>
                     <option value="Low">Low</option>
                 </select>
-                <select value={picFilter} onChange={(e) => setPicFilter(e.target.value)} className="w-full sm:w-auto border border-white/80 rounded-2xl px-3 py-2 text-sm bg-white/75 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100">
+                <select value={picFilter} onChange={(e) => setPicFilter(e.target.value)} className="w-full sm:w-auto border border-white/80 rounded-2xl px-3 py-2 text-sm bg-white/75 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100">
                     <option value="all">PIC</option>
                     <option value="none">{ALL_MARKOM_LABEL}</option>
                     {members.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}
                 </select>
-                <select value={sortMode} onChange={(e) => setSortMode(e.target.value)} className="w-full sm:w-auto border border-white/80 rounded-2xl px-3 py-2 text-sm bg-white/75 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100">
+                <select value={sortMode} onChange={(e) => setSortMode(e.target.value)} className="w-full sm:w-auto border border-white/80 rounded-2xl px-3 py-2 text-sm bg-white/75 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100">
                     <option value="deadline_asc">Deadline Terdekat</option>
                     <option value="deadline_desc">Deadline Terjauh</option>
                     <option value="priority_desc">Prioritas Tertinggi</option>
@@ -1997,13 +2144,13 @@ const NotesPage = ({ notes, members, currentPicId = '', onAddNote, onUpdateNote,
                 <div className="inline-flex w-fit rounded-2xl border border-white/70 bg-white/60 p-1 shadow-sm">
                     <button
                         onClick={() => { setActiveTab('memo'); resetForms(); setSelectedMeetingTitle(''); }}
-                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${activeTab === 'memo' ? 'bg-slate-950 text-white' : 'text-slate-500 hover:text-slate-900'}`}
+                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${activeTab === 'memo' ? 'tint-peach-solid' : 'text-slate-500 hover:text-slate-900'}`}
                     >
                         Memo
                     </button>
                     <button
                         onClick={() => { setActiveTab('meeting'); resetForms(); setSelectedMeetingTitle(''); }}
-                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${activeTab === 'meeting' ? 'bg-slate-950 text-white' : 'text-slate-500 hover:text-slate-900'}`}
+                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${activeTab === 'meeting' ? 'tint-peach-solid' : 'text-slate-500 hover:text-slate-900'}`}
                     >
                         Minute of Meeting
                     </button>
@@ -2137,7 +2284,7 @@ const NotesPage = ({ notes, members, currentPicId = '', onAddNote, onUpdateNote,
                                         onChange={(e) => setMeetingTitleDraft(e.target.value)}
                                         placeholder="Contoh: Meeting Internal Markom"
                                         autoFocus
-                                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
                                     />
                                 </div>
                                 <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/70 px-5 py-4">
@@ -2250,21 +2397,21 @@ const NotesPage = ({ notes, members, currentPicId = '', onAddNote, onUpdateNote,
                                             onChange={(e) => setMeetingForm(prev => ({ ...prev, issue: e.target.value }))}
                                             placeholder="Issue..."
                                             rows="4"
-                                            className="rounded-2xl border border-white/80 bg-white px-4 py-3 text-sm outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                                            className="rounded-2xl border border-white/80 bg-white px-4 py-3 text-sm outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
                                         />
                                         <textarea
                                             value={meetingForm.decision}
                                             onChange={(e) => setMeetingForm(prev => ({ ...prev, decision: e.target.value }))}
                                             placeholder="Keputusan..."
                                             rows="4"
-                                            className="rounded-2xl border border-white/80 bg-white px-4 py-3 text-sm outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                                            className="rounded-2xl border border-white/80 bg-white px-4 py-3 text-sm outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
                                         />
                                     </div>
                                     <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto]">
                                         <select
                                             value={meetingForm.picId}
                                             onChange={(e) => setMeetingForm(prev => ({ ...prev, picId: e.target.value }))}
-                                            className="rounded-2xl border border-white/80 bg-white px-4 py-3 text-sm outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                                            className="rounded-2xl border border-white/80 bg-white px-4 py-3 text-sm outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
                                         >
                                             <option value="">{ALL_MARKOM_LABEL}</option>
                                             {members.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}
@@ -2273,7 +2420,7 @@ const NotesPage = ({ notes, members, currentPicId = '', onAddNote, onUpdateNote,
                                             type="date"
                                             value={meetingForm.deadline}
                                             onChange={(e) => setMeetingForm(prev => ({ ...prev, deadline: e.target.value }))}
-                                            className="rounded-2xl border border-white/80 bg-white px-4 py-3 text-sm outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                                            className="rounded-2xl border border-white/80 bg-white px-4 py-3 text-sm outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
                                         />
                                         <div className="flex gap-2">
                                             <button type="button" onClick={resetForms} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600 hover:text-slate-900">
@@ -2388,14 +2535,14 @@ const ShortcutLauncher = ({ shortcuts, onAddShortcut, onDeleteShortcut, onToggle
                 className="absolute inset-0 cursor-default bg-transparent"
             />
             <div className="absolute right-4 top-4 md:right-6 md:top-6 w-[min(380px,calc(100vw-2rem))] max-h-[calc(100dvh-2rem)] bg-white border border-white/90 rounded-[28px] shadow-2xl shadow-slate-900/25 overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 tint-sky">
                     <div>
-                        <div className="text-sm font-semibold text-gray-900">Markom Tools</div>
-                        <div className="text-xs text-gray-500">Portal dan bookmark kerja cepat</div>
+                        <div className="text-sm font-semibold">Markom Tools</div>
+                        <div className="text-xs opacity-70">Portal dan bookmark kerja cepat</div>
                     </div>
                     <button
                         onClick={() => setIsAdding(prev => !prev)}
-                        className="px-3 py-1.5 rounded-2xl bg-slate-950 text-white text-xs font-medium hover:bg-slate-800"
+                        className="tint-sky-solid px-3 py-1.5 rounded-2xl text-xs font-medium hover:opacity-90"
                     >
                         {isAdding ? 'Tutup' : 'Tambah'}
                     </button>
@@ -2498,7 +2645,7 @@ const ShortcutLauncher = ({ shortcuts, onAddShortcut, onDeleteShortcut, onToggle
         <div className="relative z-[10000]">
             <button
                 onClick={() => setIsOpen(prev => !prev)}
-                className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${isOpen ? 'bg-gray-200 text-gray-900' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'}`}
+                className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${isOpen ? 'tint-sky' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'}`}
                 title="Shortcut Markom"
             >
                 <i className="fa-solid fa-grip text-lg"></i>
@@ -2558,7 +2705,7 @@ const PinGate = ({ members = [], selectedPicId = '', onPicChange, onUnlock }) =>
     };
 
     return (
-        <div className="min-h-screen bg-[linear-gradient(135deg,#dcecf8_0%,#eef4ff_45%,#f7eefc_100%)] p-4 font-sans text-slate-900 flex items-center justify-center">
+        <div className="min-h-screen bg-[linear-gradient(135deg,#ede9fe_0%,#e0f2fe_35%,#fce7f3_65%,#dbeafe_100%)] p-4 font-sans text-slate-900 flex items-center justify-center">
             <div className="w-full max-w-md rounded-[32px] border border-white/80 bg-white/70 p-6 shadow-2xl shadow-slate-300/60 backdrop-blur-xl">
                 <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center overflow-hidden shadow-lg shadow-blue-500/20">
@@ -2586,7 +2733,7 @@ const PinGate = ({ members = [], selectedPicId = '', onPicChange, onUnlock }) =>
                             onPicChange?.(e.target.value);
                             setError('');
                         }}
-                        className="w-full rounded-2xl border border-white/80 bg-white px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                        className="w-full rounded-2xl border border-white/80 bg-white px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-violet-300 focus:ring-4 focus:ring-violet-100"
                     >
                         <option value="">Pilih PIC</option>
                         {(members.length ? members : SEED_MEMBERS).map(member => (
@@ -2604,7 +2751,7 @@ const PinGate = ({ members = [], selectedPicId = '', onPicChange, onUnlock }) =>
                         }}
                         placeholder="PIN akses"
                         autoFocus
-                        className="w-full rounded-2xl border border-white/80 bg-white px-4 py-4 text-center text-2xl font-semibold tracking-[0.35em] text-slate-950 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                        className="w-full rounded-2xl border border-white/80 bg-white px-4 py-4 text-center text-2xl font-semibold tracking-[0.35em] text-slate-950 outline-none transition focus:border-violet-300 focus:ring-4 focus:ring-violet-100"
                     />
                     {error && (
                         <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
@@ -2614,7 +2761,8 @@ const PinGate = ({ members = [], selectedPicId = '', onPicChange, onUnlock }) =>
                     <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-full rounded-2xl bg-slate-950 px-4 py-4 text-sm font-semibold text-white shadow-lg shadow-slate-300/50 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                        className="w-full rounded-2xl px-4 py-4 text-sm font-semibold text-white shadow-lg shadow-violet-300/50 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                        style={{ backgroundImage: 'linear-gradient(120deg, #8b5cf6, #ec4899)' }}
                     >
                         {isSubmitting ? 'Memeriksa...' : 'Masuk'}
                     </button>
@@ -3382,7 +3530,7 @@ export default function TaskManagerApp() {
     });
 
     return (
-        <div className="min-h-screen bg-[linear-gradient(135deg,#dcecf8_0%,#eef4ff_45%,#f7eefc_100%)] p-0 lg:p-3 font-sans text-slate-900">
+        <div className="min-h-screen bg-[linear-gradient(135deg,#ede9fe_0%,#e0f2fe_35%,#fce7f3_65%,#dbeafe_100%)] p-0 lg:p-3 font-sans text-slate-900">
         <div className="relative flex h-screen lg:h-[calc(100vh-1.5rem)] w-full max-w-[1720px] mx-auto overflow-hidden bg-white/60 border border-white/70 shadow-2xl backdrop-blur-xl lg:rounded-[32px]">
             {isSidebarOpen && (
                 <button
@@ -3418,32 +3566,40 @@ export default function TaskManagerApp() {
 
                 <div className="px-4 mb-2 mt-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Menu Utama</div>
                 <nav className="px-3 space-y-1 mb-6">
-                    <button 
+                    <button
                         onClick={() => navigateView('dashboard')}
-                        className={`w-full flex items-center space-x-3 px-3 py-2 rounded-2xl text-sm font-medium transition-all ${view === 'dashboard' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500 hover:bg-white/55 hover:text-slate-900'}`}
+                        className={`w-full flex items-center space-x-3 px-3 py-2 rounded-2xl text-sm font-medium transition-all ${view === 'dashboard' ? 'tint-lavender shadow-sm' : 'text-slate-500 hover:bg-white/55 hover:text-slate-900'}`}
                     >
-                        <i className="fa-solid fa-chart-simple w-5 text-center"></i>
+                        <span className="tint-lavender-solid w-7 h-7 rounded-xl flex items-center justify-center text-xs shrink-0">
+                            <i className="fa-solid fa-chart-simple"></i>
+                        </span>
                         <span>Dashboard</span>
                     </button>
-                    <button 
+                    <button
                         onClick={() => navigateView('notes')}
-                        className={`w-full flex items-center space-x-3 px-3 py-2 rounded-2xl text-sm font-medium transition-all ${view === 'notes' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500 hover:bg-white/55 hover:text-slate-900'}`}
+                        className={`w-full flex items-center space-x-3 px-3 py-2 rounded-2xl text-sm font-medium transition-all ${view === 'notes' ? 'tint-peach shadow-sm' : 'text-slate-500 hover:bg-white/55 hover:text-slate-900'}`}
                     >
-                        <i className="fa-regular fa-note-sticky w-5 text-center"></i>
+                        <span className="tint-peach-solid w-7 h-7 rounded-xl flex items-center justify-center text-xs shrink-0">
+                            <i className="fa-regular fa-note-sticky"></i>
+                        </span>
                         <span>Notes</span>
                     </button>
-                    <button 
+                    <button
                         onClick={() => navigateView('calendar')}
-                        className={`w-full flex items-center space-x-3 px-3 py-2 rounded-2xl text-sm font-medium transition-all ${view === 'calendar' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500 hover:bg-white/55 hover:text-slate-900'}`}
+                        className={`w-full flex items-center space-x-3 px-3 py-2 rounded-2xl text-sm font-medium transition-all ${view === 'calendar' ? 'tint-pink shadow-sm' : 'text-slate-500 hover:bg-white/55 hover:text-slate-900'}`}
                     >
-                        <i className="fa-regular fa-calendar-days w-5 text-center"></i>
+                        <span className="tint-pink-solid w-7 h-7 rounded-xl flex items-center justify-center text-xs shrink-0">
+                            <i className="fa-regular fa-calendar-days"></i>
+                        </span>
                         <span>Kalender Markom</span>
                     </button>
-                    <button 
+                    <button
                         onClick={() => navigateView('members')}
-                        className={`w-full flex items-center space-x-3 px-3 py-2 rounded-2xl text-sm font-medium transition-all ${view === 'members' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500 hover:bg-white/55 hover:text-slate-900'}`}
+                        className={`w-full flex items-center space-x-3 px-3 py-2 rounded-2xl text-sm font-medium transition-all ${view === 'members' ? 'tint-mint shadow-sm' : 'text-slate-500 hover:bg-white/55 hover:text-slate-900'}`}
                     >
-                        <i className="fa-solid fa-users w-5 text-center"></i>
+                        <span className="tint-mint-solid w-7 h-7 rounded-xl flex items-center justify-center text-xs shrink-0">
+                            <i className="fa-solid fa-users"></i>
+                        </span>
                         <span>Anggota Tim</span>
                     </button>
                 </nav>
@@ -3479,7 +3635,7 @@ export default function TaskManagerApp() {
                                     />
                                     <button
                                         onClick={(e) => handleToggleProjectCalendar(project.id, !project.showInCalendar, e)}
-                                        className={`p-1.5 rounded hover:bg-gray-200 transition-colors mr-0.5 ${project.showInCalendar ? 'text-blue-600 opacity-100' : 'text-gray-400 opacity-100 lg:opacity-0 lg:group-hover:opacity-100'}`}
+                                        className={`p-1.5 rounded hover:bg-gray-200 transition-colors mr-0.5 ${project.showInCalendar ? 'text-pink-600 opacity-100' : 'text-gray-400 opacity-100 lg:opacity-0 lg:group-hover:opacity-100'}`}
                                         title={project.showInCalendar ? 'Sembunyikan dari kalender' : 'Tampilkan di kalender'}
                                     >
                                         <i className={`${project.showInCalendar ? 'fa-solid' : 'fa-regular'} fa-calendar-days text-xs`}></i>
@@ -3663,10 +3819,11 @@ export default function TaskManagerApp() {
                                 setSortMode={setSortMode}
                                 onReset={resetTaskControls}
                             />
-                            <KanbanView 
+                            <KanbanView
                                 tasks={currentTasks}
                                 members={members}
-                                onAdd={handleAddTask} 
+                                projects={projects}
+                                onAdd={handleAddTask}
                                 onEdit={handleEditTask} 
                                 onDelete={handleDeleteTask}
                                 onUpdatePriority={handleUpdatePriority}
@@ -3697,10 +3854,11 @@ export default function TaskManagerApp() {
                                 setSortMode={setSortMode}
                                 onReset={resetTaskControls}
                             />
-                            <TableView 
+                            <TableView
                                 tasks={currentTasks}
                                 members={members}
-                                onAdd={handleAddTask} 
+                                projects={projects}
+                                onAdd={handleAddTask}
                                 onEdit={handleEditTask} 
                                 onDelete={handleDeleteTask}
                                 onUpdatePriority={handleUpdatePriority}
