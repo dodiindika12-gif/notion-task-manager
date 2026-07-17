@@ -1736,47 +1736,59 @@ const MarkomCalendar = ({ tasks, projects, members, currentPicId = '', onEdit, o
                 </div>
             </div>
 
-            <div className="border border-white/70 rounded-3xl bg-white/75 p-3 mb-4 shadow-xl shadow-slate-200/40 backdrop-blur">
-                <div className="text-sm font-semibold mb-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg tint-lavender">Filter Project Kalender</div>
-                <div className="flex flex-wrap gap-2 mt-1">
-                    {projects.map(project => (
-                        <label
-                            key={project.id}
-                            className={`inline-flex items-center gap-2 border rounded-2xl px-3 py-2 text-sm cursor-pointer transition-colors ${project.showInCalendar ? 'bg-white border-white text-slate-950 shadow-sm' : 'bg-white/40 border-white/60 text-slate-500'}`}
+            <div className="border border-white/70 rounded-3xl bg-white/75 shadow-xl shadow-slate-200/40 backdrop-blur">
+                <div className="relative z-20 px-4 py-3 border-b border-slate-100 flex items-start justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button
+                            onClick={() => moveMonth(-1)}
+                            className="w-9 h-9 rounded-2xl border border-white/80 bg-white/70 hover:bg-white text-slate-600 shadow-sm"
+                            aria-label="Bulan sebelumnya"
                         >
-                            <input
-                                type="checkbox"
-                                checked={!!project.showInCalendar}
-                                onChange={(e) => onToggleProjectCalendar(project.id, e.target.checked)}
-                                className="rounded border-gray-300"
-                            />
-                            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: project.color || '#2563eb' }}></span>
-                            <span>{project.name}</span>
-                        </label>
-                    ))}
-                </div>
-                <div className="text-xs text-gray-500 mt-2">Default awal hanya Promo dan Event yang aktif. Project lain bisa dicentang di sini atau dari sidebar.</div>
-            </div>
-
-            <TaskSummary stats={monthStats} />
-
-            <div className="border border-white/70 rounded-3xl bg-white/75 overflow-hidden shadow-xl shadow-slate-200/40 backdrop-blur">
-                <div className="px-4 py-3 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                        <button onClick={() => moveMonth(-1)} className="w-9 h-9 rounded-2xl border border-white/80 bg-white/70 hover:bg-white text-slate-600 shadow-sm">
                             <i className="fa-solid fa-chevron-left text-xs"></i>
                         </button>
-                        <div className="min-w-[180px] text-center font-semibold text-gray-900 capitalize">{monthLabel}</div>
-                        <button onClick={() => moveMonth(1)} className="w-9 h-9 rounded-2xl border border-white/80 bg-white/70 hover:bg-white text-slate-600 shadow-sm">
+                        <div className="min-w-[150px] text-center font-semibold text-gray-900 capitalize">{monthLabel}</div>
+                        <button
+                            onClick={() => moveMonth(1)}
+                            className="w-9 h-9 rounded-2xl border border-white/80 bg-white/70 hover:bg-white text-slate-600 shadow-sm"
+                            aria-label="Bulan berikutnya"
+                        >
                             <i className="fa-solid fa-chevron-right text-xs"></i>
                         </button>
+
+                        <details className="relative">
+                            <summary className="list-none cursor-pointer border border-violet-100 bg-violet-50 rounded-xl px-3 py-2 text-xs font-medium text-violet-700 hover:bg-violet-100">
+                                Project ({visibleProjectIds.length}/{projects.length})
+                            </summary>
+                            <div className="absolute left-0 top-full z-30 mt-2 w-56 max-h-72 overflow-y-auto rounded-2xl border border-slate-100 bg-white p-2 shadow-xl">
+                                {projects.map(project => (
+                                    <label key={project.id} className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-2 text-sm hover:bg-slate-50">
+                                        <input
+                                            type="checkbox"
+                                            checked={!!project.showInCalendar}
+                                            onChange={(e) => onToggleProjectCalendar(project.id, e.target.checked)}
+                                            className="rounded border-gray-300"
+                                        />
+                                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: project.color || '#2563eb' }}></span>
+                                        <span className="truncate">{project.name}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </details>
+
+                        <div className="flex flex-wrap items-center gap-1 text-xs">
+                            <span className="rounded-xl bg-slate-100 px-2.5 py-2 text-slate-600">Total <strong className="text-slate-900">{monthStats.total}</strong></span>
+                            <span className="rounded-xl bg-emerald-50 px-2.5 py-2 text-emerald-700">Selesai <strong>{monthStats.done}</strong></span>
+                            <span className="rounded-xl bg-rose-50 px-2.5 py-2 text-rose-700">Terlambat <strong>{monthStats.overdue}</strong></span>
+                            <span className="rounded-xl bg-orange-50 px-2.5 py-2 text-orange-700">Hari ini <strong>{monthStats.today}</strong></span>
+                        </div>
                     </div>
-                    <button onClick={goToday} className="border border-white/80 bg-white/70 rounded-2xl px-3 py-2 text-sm text-slate-700 hover:bg-white shadow-sm">
+
+                    <button onClick={goToday} className="shrink-0 border border-white/80 bg-white/70 rounded-xl px-3 py-2 text-sm text-slate-700 hover:bg-white shadow-sm">
                         Bulan Ini
                     </button>
                 </div>
 
-                <div className="overflow-x-auto custom-scrollbar">
+                <div className="overflow-x-auto custom-scrollbar rounded-b-3xl">
                     <div className="min-w-[980px]">
                         <div className="grid grid-cols-7 border-b border-slate-100 bg-white/55">
                             {weekDays.map(day => (
